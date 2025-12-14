@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Reset body styles for quiz */
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Hide scrollbar but allow scrolling */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
