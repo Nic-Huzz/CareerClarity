@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const CareerClarityQuiz = () => {
@@ -13,6 +13,12 @@ const CareerClarityQuiz = () => {
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [quizResultId, setQuizResultId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+
+  // Generate session ID on mount
+  useEffect(() => {
+    setSessionId(`career-quiz-${crypto.randomUUID()}`);
+  }, []);
 
   // The 6 Core Needs with Accomplish <-> Connect spectrum
   const needs = [
@@ -455,6 +461,7 @@ const CareerClarityQuiz = () => {
       const { data, error } = await supabase
         .from('quiz_results')
         .insert({
+          session_id: sessionId,
           need_answers: needAnswers,
           structural_answers: structuralAnswers,
           path_result: results.path,
@@ -610,7 +617,7 @@ const CareerClarityQuiz = () => {
         ctaHeadline: "Ready to figure out what to build?",
         ctaBody: "Find My Flow helps you identify business opportunities based on your skills, the problems you care about, and the people you want to serve.",
         ctaButton: "Start Find My Flow",
-        ctaLink: "/find-my-flow"
+        ctaLink: "https://findmyflow.nichuzz.com"
       };
     } else {
       return {
@@ -634,7 +641,7 @@ const CareerClarityQuiz = () => {
         ctaHeadline: "Ready to find roles that fit?",
         ctaBody: "The Flow Finder helps you identify career opportunities that match your specific needs — based on your skills, the problems you want to solve, and the impact you want to have.",
         ctaButton: "Start Flow Finder",
-        ctaLink: "/career-modules/flow-finder"
+        ctaLink: "/nikigai/problems"
       };
     }
   };
@@ -1174,7 +1181,7 @@ const CareerClarityQuiz = () => {
             <h3 className="text-2xl font-bold mb-3">{pathContent.ctaHeadline}</h3>
             <p className="text-white/75 mb-6 max-w-md mx-auto">{pathContent.ctaBody}</p>
             <button
-              onClick={() => window.location.href = pathContent.ctaLink}
+              onClick={() => window.location.href = `${pathContent.ctaLink}?session=${sessionId}`}
               className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-400 to-amber-500 text-black font-bold text-lg rounded-xl shadow-[0_8px_24px_rgba(251,191,36,0.35)] hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(251,191,36,0.45)] transition-all duration-300"
             >
               {pathContent.ctaButton} <span>→</span>
