@@ -196,53 +196,67 @@ export default function FlowFinderIntegration() {
     content += `${careerAnalysis.career_summary}\n\n`
 
     content += `JOB TITLES TO SEARCH FOR\n${'-'.repeat(30)}\n`
-    careerAnalysis.job_titles?.forEach((job, i) => {
-      content += `${i + 1}. ${job.title}\n`
-      content += `   Why it fits: ${job.why_fits}\n`
-      content += `   Search keywords: ${job.search_keywords?.join(', ')}\n\n`
-    })
+    if (Array.isArray(careerAnalysis.job_titles)) {
+      careerAnalysis.job_titles.forEach((job, i) => {
+        content += `${i + 1}. ${job.title}\n`
+        content += `   Why it fits: ${job.why_fits}\n`
+        content += `   Search keywords: ${Array.isArray(job.search_keywords) ? job.search_keywords.join(', ') : ''}\n\n`
+      })
+    }
 
     content += `TARGET INDUSTRIES\n${'-'.repeat(30)}\n`
-    careerAnalysis.industries?.forEach((ind, i) => {
-      content += `${i + 1}. ${ind.name}\n`
-      content += `   Why: ${ind.why_fits}\n`
-      content += `   Example companies: ${ind.example_companies?.join(', ')}\n\n`
-    })
+    if (Array.isArray(careerAnalysis.industries)) {
+      careerAnalysis.industries.forEach((ind, i) => {
+        content += `${i + 1}. ${ind.name}\n`
+        content += `   Why: ${ind.why_fits}\n`
+        content += `   Example companies: ${Array.isArray(ind.example_companies) ? ind.example_companies.join(', ') : ''}\n\n`
+      })
+    }
 
     content += `COMPANY CHARACTERISTICS TO LOOK FOR\n${'-'.repeat(30)}\n`
-    careerAnalysis.company_characteristics?.forEach((char, i) => {
-      content += `${i + 1}. ${char.characteristic}\n`
-      content += `   Why it matters: ${char.why_matters}\n`
-      content += `   How to identify: ${char.how_to_identify}\n\n`
-    })
+    if (Array.isArray(careerAnalysis.company_characteristics)) {
+      careerAnalysis.company_characteristics.forEach((char, i) => {
+        content += `${i + 1}. ${char.characteristic}\n`
+        content += `   Why it matters: ${char.why_matters}\n`
+        content += `   How to identify: ${char.how_to_identify}\n\n`
+      })
+    }
 
     content += `INTERVIEW STORIES\n${'-'.repeat(30)}\n`
-    careerAnalysis.interview_stories?.forEach((story, i) => {
-      content += `${i + 1}. ${story.story_hook}\n`
-      content += `   Situation: ${story.situation}\n`
-      content += `   What it shows: ${story.what_it_shows}\n`
-      content += `   When to use: ${story.when_to_use}\n\n`
-    })
+    if (Array.isArray(careerAnalysis.interview_stories)) {
+      careerAnalysis.interview_stories.forEach((story, i) => {
+        content += `${i + 1}. ${story.story_hook}\n`
+        content += `   Situation: ${story.situation}\n`
+        content += `   What it shows: ${story.what_it_shows}\n`
+        content += `   When to use: ${story.when_to_use}\n\n`
+      })
+    }
 
     content += `LINKEDIN HEADLINES\n${'-'.repeat(30)}\n`
-    careerAnalysis.linkedin_headlines?.forEach((headline, i) => {
-      content += `${i + 1}. ${headline}\n`
-    })
+    if (Array.isArray(careerAnalysis.linkedin_headlines)) {
+      careerAnalysis.linkedin_headlines.forEach((headline, i) => {
+        content += `${i + 1}. ${headline}\n`
+      })
+    }
     content += '\n'
 
     content += `QUESTIONS TO ASK EMPLOYERS\n${'-'.repeat(30)}\n`
-    careerAnalysis.questions_to_ask?.forEach((q, i) => {
-      content += `${i + 1}. ${q.question}\n`
-      content += `   Why ask: ${q.why_ask}\n`
-      content += `   Red flag answer: ${q.red_flag_answer}\n\n`
-    })
+    if (Array.isArray(careerAnalysis.questions_to_ask)) {
+      careerAnalysis.questions_to_ask.forEach((q, i) => {
+        content += `${i + 1}. ${q.question}\n`
+        content += `   Why ask: ${q.why_ask}\n`
+        content += `   Red flag answer: ${q.red_flag_answer}\n\n`
+      })
+    }
 
     content += `RED FLAGS TO WATCH FOR\n${'-'.repeat(30)}\n`
-    careerAnalysis.red_flags?.forEach((rf, i) => {
-      content += `${i + 1}. ${rf.red_flag}\n`
-      content += `   Why problematic: ${rf.why_problematic}\n`
-      content += `   What to look for: ${rf.what_to_look_for}\n\n`
-    })
+    if (Array.isArray(careerAnalysis.red_flags)) {
+      careerAnalysis.red_flags.forEach((rf, i) => {
+        content += `${i + 1}. ${rf.red_flag}\n`
+        content += `   Why problematic: ${rf.why_problematic}\n`
+        content += `   What to look for: ${rf.what_to_look_for}\n\n`
+      })
+    }
 
     const blob = new Blob([content], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
@@ -581,11 +595,19 @@ export default function FlowFinderIntegration() {
                     return
                   }
                   // Save email to database
-                  await supabase.from('email_captures').insert({
+                  const { error: emailError } = await supabase.from('email_captures').insert({
                     email: downloadEmail,
                     session_id: quizSessionId || flowSessionId,
                     source: 'career_analysis_download'
                   })
+
+                  if (emailError) {
+                    console.error('Error saving email:', emailError)
+                    // Still allow download even if email save fails
+                  } else {
+                    console.log('Email saved successfully:', downloadEmail)
+                  }
+
                   setEmailSubmitted(true)
                   downloadResults()
                 }}
