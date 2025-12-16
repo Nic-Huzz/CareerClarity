@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 const CareerClarityQuiz = () => {
+  const navigate = useNavigate();
   const [stage, setStage] = useState('intro');
   const [currentNeed, setCurrentNeed] = useState(0);
   const [currentStructural, setCurrentStructural] = useState(0);
@@ -1181,7 +1183,14 @@ const CareerClarityQuiz = () => {
             <h3 className="text-2xl font-bold mb-3">{pathContent.ctaHeadline}</h3>
             <p className="text-white/75 mb-6 max-w-md mx-auto">{pathContent.ctaBody}</p>
             <button
-              onClick={() => window.location.href = `${pathContent.ctaLink}?session=${sessionId}`}
+              onClick={() => {
+                const url = `${pathContent.ctaLink}?session=${sessionId}`;
+                if (pathContent.ctaLink.startsWith('http')) {
+                  window.location.href = url;
+                } else {
+                  navigate(`${pathContent.ctaLink}?session=${sessionId}`);
+                }
+              }}
               className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-amber-400 to-amber-500 text-black font-bold text-lg rounded-xl shadow-[0_8px_24px_rgba(251,191,36,0.35)] hover:-translate-y-1 hover:shadow-[0_12px_28px_rgba(251,191,36,0.45)] transition-all duration-300"
             >
               {pathContent.ctaButton} <span>→</span>
