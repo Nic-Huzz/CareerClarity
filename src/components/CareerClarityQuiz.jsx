@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
+const STORAGE_KEY = 'careerClarityQuiz';
+
 const CareerClarityQuiz = () => {
   const navigate = useNavigate();
   const [stage, setStage] = useState('intro');
@@ -16,11 +18,57 @@ const CareerClarityQuiz = () => {
   const [quizResultId, setQuizResultId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Generate session ID on mount
+  // Load saved progress from localStorage on mount
   useEffect(() => {
-    setSessionId(`career-quiz-${crypto.randomUUID()}`);
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        // Only restore if there's actual progress (not just intro)
+        if (data.stage && data.stage !== 'intro') {
+          setStage(data.stage);
+          setCurrentNeed(data.currentNeed || 0);
+          setCurrentStructural(data.currentStructural || 0);
+          setNeedAnswers(data.needAnswers || {});
+          setStructuralAnswers(data.structuralAnswers || {});
+          setSessionId(data.sessionId);
+        } else if (data.sessionId) {
+          // Keep session ID even if starting fresh
+          setSessionId(data.sessionId);
+        } else {
+          setSessionId(`career-quiz-${crypto.randomUUID()}`);
+        }
+      } else {
+        setSessionId(`career-quiz-${crypto.randomUUID()}`);
+      }
+    } catch (err) {
+      console.error('Error loading saved progress:', err);
+      setSessionId(`career-quiz-${crypto.randomUUID()}`);
+    }
+    setIsLoaded(true);
   }, []);
+
+  // Save progress to localStorage whenever relevant state changes
+  useEffect(() => {
+    if (!isLoaded || !sessionId) return;
+
+    const dataToSave = {
+      stage,
+      currentNeed,
+      currentStructural,
+      needAnswers,
+      structuralAnswers,
+      sessionId
+    };
+
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    } catch (err) {
+      console.error('Error saving progress:', err);
+    }
+  }, [isLoaded, stage, currentNeed, currentStructural, needAnswers, structuralAnswers, sessionId]);
 
   // The 6 Core Needs with Accomplish <-> Connect spectrum
   const needs = [
@@ -462,7 +510,7 @@ const CareerClarityQuiz = () => {
     try {
       const { data, error } = await supabase
         .from('quiz_results')
-        .insert({
+        .upsert({
           session_id: sessionId,
           need_answers: needAnswers,
           structural_answers: structuralAnswers,
@@ -470,7 +518,7 @@ const CareerClarityQuiz = () => {
           unmet_needs: results.unmetNeeds.map(n => n.id),
           accomplish_score: results.accomplishCount,
           employment_score: results.employmentSignals
-        })
+        }, { onConflict: 'session_id' })
         .select()
         .single();
 
@@ -619,7 +667,7 @@ const CareerClarityQuiz = () => {
         ctaHeadline: "Ready to figure out what to build?",
         ctaBody: "Find My Flow helps you identify business opportunities based on your skills, the problems you care about, and the people you want to serve.",
         ctaButton: "Start Find My Flow",
-        ctaLink: "https://findmyflow.nichuzz.com"
+        ctaLink: "/nikigai/problems"
       };
     } else {
       return {
@@ -1201,6 +1249,7 @@ const CareerClarityQuiz = () => {
           <div className="text-center mt-8 mb-6">
             <button
               onClick={() => {
+                localStorage.removeItem(STORAGE_KEY);
                 setStage('intro');
                 setCurrentNeed(0);
                 setCurrentStructural(0);
@@ -1210,6 +1259,7 @@ const CareerClarityQuiz = () => {
                 setEmail('');
                 setEmailSubmitted(false);
                 setQuizResultId(null);
+                setSessionId(`career-quiz-${crypto.randomUUID()}`);
               }}
               className="text-white/40 hover:text-white/60 text-sm transition-colors"
             >

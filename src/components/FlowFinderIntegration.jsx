@@ -1,6 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
+import { GradientWheel } from './CompetenceWheels'
+import './CompetenceWheels/GradientWheel.css'
+import {
+  PROBLEM_SEGMENTS, PERSONA_SEGMENTS, SKILLS_SEGMENTS,
+  PROBLEMS_PROFICIENCY_RINGS, JOURNEY_STAGES, PROFICIENCY_RINGS
+} from '../lib/wheelTaxonomy'
 import './FlowFinder.css'
 
 export default function FlowFinderIntegration() {
@@ -36,6 +42,128 @@ export default function FlowFinderIntegration() {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     return regex.test(email)
   }
+
+  // Add hue values to segments for wheel rendering
+  const problemsWithHue = useMemo(() =>
+    PROBLEM_SEGMENTS.map((s, i) => ({ ...s, name: s.displayName, hue: i * 30 })),
+    []
+  )
+  const personasWithHue = useMemo(() =>
+    PERSONA_SEGMENTS.map((s, i) => ({ ...s, name: s.displayName, hue: i * 30 })),
+    []
+  )
+  const skillsWithHue = useMemo(() =>
+    SKILLS_SEGMENTS.map((s, i) => ({ ...s, name: s.displayName, hue: i * 30 })),
+    []
+  )
+
+  // Map cluster labels to wheel segment indices
+  const mapProblemsToSegments = (clusterLabel) => {
+    const labelLower = clusterLabel.toLowerCase()
+    const segmentMappings = {
+      health: [0], fitness: [0], body: [0], energy: [0], physical: [0], vitality: [0],
+      anxiety: [1], stress: [1], mindset: [1], mental: [1], wellbeing: [1], burnout: [1],
+      skills: [2], learning: [2], productivity: [2], growth: [2], mastery: [2],
+      relationship: [3], marriage: [3], dating: [3], family: [3], intimate: [3],
+      caregiving: [4], support: [4], healthcare: [4], service: [4], care: [4],
+      art: [5], creativity: [5], expression: [5], creative: [5],
+      team: [6], community: [6], local: [6], culture: [6],
+      belonging: [7], movement: [7], cultural: [7],
+      money: [8], business: [8], career: [8], financial: [8], freedom: [8],
+      inequality: [9], rights: [9], justice: [9], equity: [9],
+      climate: [10], environment: [10], sustainability: [10], planet: [10],
+      technology: [11], innovation: [11], future: [11], progress: [11],
+    }
+    const matchedSegments = new Set()
+    Object.entries(segmentMappings).forEach(([keyword, indices]) => {
+      if (labelLower.includes(keyword)) indices.forEach(i => matchedSegments.add(i))
+    })
+    return matchedSegments.size > 0 ? Array.from(matchedSegments) : [2]
+  }
+
+  const mapPersonasToSegments = (clusterLabel) => {
+    const labelLower = clusterLabel.toLowerCase()
+    const segmentMappings = {
+      seeker: [0], lost: [0], direction: [0], purpose: [0],
+      builder: [1], creating: [1], building: [1], entrepreneurship: [1],
+      healer: [2], hurting: [2], healing: [2], trauma: [2],
+      teacher: [3], learning: [3], knowledge: [3],
+      connector: [4], lonely: [4], community: [4], belonging: [4],
+      achiever: [5], success: [5], ambitious: [5],
+      explorer: [6], freedom: [6], adventure: [6],
+      visionary: [7], future: [7], innovation: [7],
+      protector: [8], security: [8], safety: [8],
+      creator: [9], expression: [9], artistic: [9],
+      nurturer: [10], family: [10], caring: [10],
+      challenger: [11], injustice: [11], justice: [11],
+    }
+    const matchedSegments = new Set()
+    Object.entries(segmentMappings).forEach(([keyword, indices]) => {
+      if (labelLower.includes(keyword)) indices.forEach(i => matchedSegments.add(i))
+    })
+    return matchedSegments.size > 0 ? Array.from(matchedSegments) : [0]
+  }
+
+  const mapSkillsToSegments = (clusterLabel) => {
+    const labelLower = clusterLabel.toLowerCase()
+    const segmentMappings = {
+      clarifying: [0], explaining: [0], teaching: [0],
+      analyzing: [1], analysis: [1], data: [1], research: [1],
+      strategizing: [2], strategy: [2], planning: [2],
+      organizing: [3], systems: [3], operations: [3],
+      building: [4], making: [4], engineering: [4], coding: [4],
+      designing: [5], design: [5], ux: [5], visual: [5],
+      creating: [6], creative: [6], art: [6], writing: [6],
+      expressing: [7], storytelling: [7], presenting: [7],
+      connecting: [8], networking: [8], facilitating: [8],
+      influencing: [9], sales: [9], persuading: [9],
+      nurturing: [10], coaching: [10], mentoring: [10],
+      synthesizing: [11], integrating: [11], wisdom: [11],
+    }
+    const matchedSegments = new Set()
+    Object.entries(segmentMappings).forEach(([keyword, indices]) => {
+      if (labelLower.includes(keyword)) indices.forEach(i => matchedSegments.add(i))
+    })
+    return matchedSegments.size > 0 ? Array.from(matchedSegments) : [6]
+  }
+
+  // Map proficiency rating to ring index
+  const getRingForProficiency = (rating) => {
+    switch (rating) {
+      case 'exploring': return 0
+      case 'pursuing': return 1
+      case 'proven': return 2
+      default: return 1
+    }
+  }
+
+  // Generate lit cells from clusters
+  const problemsLitCells = useMemo(() => {
+    const cells = new Set()
+    problemsClusters.forEach(cluster => {
+      const ringIdx = getRingForProficiency(cluster.proficiency)
+      mapProblemsToSegments(cluster.cluster_label).forEach(segIdx => cells.add(`${segIdx}-${ringIdx}`))
+    })
+    return cells
+  }, [problemsClusters])
+
+  const personasLitCells = useMemo(() => {
+    const cells = new Set()
+    personaClusters.forEach(cluster => {
+      const ringIdx = getRingForProficiency(cluster.proficiency)
+      mapPersonasToSegments(cluster.cluster_label).forEach(segIdx => cells.add(`${segIdx}-${ringIdx}`))
+    })
+    return cells
+  }, [personaClusters])
+
+  const skillsLitCells = useMemo(() => {
+    const cells = new Set()
+    skillsClusters.forEach(cluster => {
+      const ringIdx = getRingForProficiency(cluster.proficiency)
+      mapSkillsToSegments(cluster.cluster_label).forEach(segIdx => cells.add(`${segIdx}-${ringIdx}`))
+    })
+    return cells
+  }, [skillsClusters])
 
   useEffect(() => {
     createSession()
@@ -272,49 +400,85 @@ export default function FlowFinderIntegration() {
   const hasData = skillsClusters.length > 0 || problemsClusters.length > 0 || personaClusters.length > 0
 
   const renderWelcome = () => (
-    <div className="container welcome-container">
-      <h1 className="welcome-greeting">Career Opportunities Analysis</h1>
-      <div className="welcome-message">
+    <div className="ff-container ff-welcome-container">
+      <h1 className="ff-welcome-greeting">Career Opportunities Analysis</h1>
+      <div className="ff-welcome-message">
         <p><strong>Hey there!</strong></p>
         <p>You've done incredible work discovering your unique profile:</p>
       </div>
 
-      <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '24px', margin: '32px 0', textAlign: 'left' }}>
-        {problemsClusters.length > 0 && (
-          <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#fbbf24', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Problems You Care About</h4>
-            {problemsClusters.slice(0, 3).map((c, i) => (
-              <p key={i} style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.85)', margin: '4px 0' }}>{c.cluster_label}</p>
-            ))}
-          </div>
-        )}
+      {/* Three Wheels Display */}
+      {hasData ? (
+        <div style={{ margin: '32px 0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', marginBottom: '24px', alignItems: 'center' }}>
+            {/* Problems Wheel */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#fbbf24', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Problems</h4>
+              <GradientWheel
+                segments={problemsWithHue}
+                rings={PROBLEMS_PROFICIENCY_RINGS}
+                litCells={problemsLitCells}
+                size={220}
+                centerLabel=""
+                interactive={true}
+              />
+              <div style={{ marginTop: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.6)', textAlign: 'center' }}>
+                {problemsClusters.slice(0, 2).map((c, i) => (
+                  <div key={i}>{c.cluster_label}</div>
+                ))}
+              </div>
+            </div>
 
-        {personaClusters.length > 0 && (
-          <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#fbbf24', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>People You Understand</h4>
-            {personaClusters.slice(0, 3).map((c, i) => (
-              <p key={i} style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.85)', margin: '4px 0' }}>{c.cluster_label}</p>
-            ))}
-          </div>
-        )}
+            {/* Personas Wheel */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#a855f7', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Personas</h4>
+              <GradientWheel
+                segments={personasWithHue}
+                rings={JOURNEY_STAGES}
+                litCells={personasLitCells}
+                size={220}
+                centerLabel=""
+                interactive={true}
+              />
+              <div style={{ marginTop: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.6)', textAlign: 'center' }}>
+                {personaClusters.slice(0, 2).map((c, i) => (
+                  <div key={i}>{c.cluster_label}</div>
+                ))}
+              </div>
+            </div>
 
-        {skillsClusters.length > 0 && (
-          <div>
-            <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#fbbf24', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Your Skills & Strengths</h4>
-            {skillsClusters.slice(0, 3).map((c, i) => (
-              <p key={i} style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.85)', margin: '4px 0' }}>{c.cluster_label}</p>
-            ))}
+            {/* Skills Wheel */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <h4 style={{ fontSize: '14px', fontWeight: '700', color: '#6BCB77', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Skills</h4>
+              <GradientWheel
+                segments={skillsWithHue}
+                rings={PROFICIENCY_RINGS}
+                litCells={skillsLitCells}
+                size={220}
+                centerLabel=""
+                interactive={true}
+              />
+              <div style={{ marginTop: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.6)', textAlign: 'center' }}>
+                {skillsClusters.slice(0, 2).map((c, i) => (
+                  <div key={i}>{c.cluster_label}</div>
+                ))}
+              </div>
+            </div>
           </div>
-        )}
 
-        {!hasData && (
-          <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.6)', textAlign: 'center' }}>
+          <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>
+            Hover over wheel segments to see details
+          </p>
+        </div>
+      ) : (
+        <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', padding: '24px', margin: '32px 0', textAlign: 'center' }}>
+          <p style={{ fontSize: '14px', color: 'rgba(255, 255, 255, 0.6)' }}>
             No discovery data found. Please complete the Problems, Persona, and Skills flows first.
           </p>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="welcome-message">
+      <div className="ff-welcome-message">
         <p>Now I'll analyze everything to generate personalized career guidance:</p>
       </div>
 
@@ -352,7 +516,7 @@ export default function FlowFinderIntegration() {
       </div>
 
       <button
-        className="primary-button"
+        className="ff-primary-button"
         onClick={runCareerAnalysis}
         disabled={!hasData}
         style={{ opacity: hasData ? 1 : 0.5 }}
@@ -363,10 +527,10 @@ export default function FlowFinderIntegration() {
   )
 
   const renderProcessing = () => (
-    <div className="container processing-container">
-      <div className="spinner"></div>
-      <div className="processing-text">Analyzing your career profile...</div>
-      <div className="processing-subtext">
+    <div className="ff-container ff-processing-container">
+      <div className="ff-spinner"></div>
+      <div className="ff-processing-text">Analyzing your career profile...</div>
+      <div className="ff-processing-subtext">
         AI is connecting the dots between your problems, personas, and skills to generate personalized career guidance.
         <br /><br />
         This usually takes 20-30 seconds.
@@ -375,16 +539,16 @@ export default function FlowFinderIntegration() {
   )
 
   const renderError = () => (
-    <div className="container welcome-container">
-      <h1 className="welcome-greeting" style={{ color: '#ef4444' }}>Analysis Error</h1>
-      <div className="welcome-message">
+    <div className="ff-container ff-welcome-container">
+      <h1 className="ff-welcome-greeting" style={{ color: '#ef4444' }}>Analysis Error</h1>
+      <div className="ff-welcome-message">
         <p>{processingError}</p>
       </div>
-      <button className="primary-button" onClick={runCareerAnalysis}>
+      <button className="ff-primary-button" onClick={runCareerAnalysis}>
         Try Again
       </button>
       <button
-        className="primary-button"
+        className="ff-primary-button"
         onClick={() => setCurrentScreen('welcome')}
         style={{ background: 'rgba(255, 255, 255, 0.1)', marginTop: '12px' }}
       >
@@ -430,8 +594,8 @@ export default function FlowFinderIntegration() {
     if (!careerAnalysis) return null
 
     return (
-      <div className="container welcome-container" style={{ maxWidth: '800px' }}>
-        <h1 className="welcome-greeting">Your Career Clarity Results</h1>
+      <div className="ff-container ff-welcome-container" style={{ maxWidth: '800px' }}>
+        <h1 className="ff-welcome-greeting">Your Career Clarity Results</h1>
 
         {/* Career Summary */}
         <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '2px solid rgba(251, 191, 36, 0.3)', borderRadius: '12px', padding: '24px', margin: '32px 0', textAlign: 'left' }}>
@@ -583,7 +747,7 @@ export default function FlowFinderIntegration() {
                 <p style={{ color: '#ef4444', fontSize: '13px', margin: '4px 0 0 0' }}>{emailError}</p>
               )}
               <button
-                className="primary-button"
+                className="ff-primary-button"
                 style={{ marginTop: '8px' }}
                 onClick={async () => {
                   if (!downloadEmail) {
@@ -616,13 +780,13 @@ export default function FlowFinderIntegration() {
               </button>
             </div>
           ) : (
-            <button className="primary-button" onClick={downloadResults}>
+            <button className="ff-primary-button" onClick={downloadResults}>
               Download Results Again
             </button>
           )}
           <Link
             to="/"
-            className="primary-button"
+            className="ff-primary-button"
             style={{ background: 'rgba(255, 255, 255, 0.1)', textDecoration: 'none', textAlign: 'center', marginTop: '8px' }}
           >
             Return to Dashboard
@@ -641,12 +805,12 @@ export default function FlowFinderIntegration() {
 
   return (
     <div className="flow-finder-app">
-      <div className="progress-container">
-        <div className="progress-dots">
+      <div className="ff-progress-container">
+        <div className="ff-progress-dots">
           {[...Array(3)].map((_, i) => (
             <div
               key={i}
-              className={`progress-dot ${
+              className={`ff-progress-dot ${
                 i === 0 && currentScreen === 'welcome' ? 'active' :
                 i === 1 && ['processing', 'error'].includes(currentScreen) ? 'active' :
                 i === 2 && currentScreen === 'results' ? 'active' : ''
