@@ -70,6 +70,59 @@ const CareerClarityQuiz = () => {
     }
   }, [isLoaded, stage, currentNeed, currentStructural, needAnswers, structuralAnswers, sessionId]);
 
+  // Save quiz results to Supabase when reaching results stage
+  useEffect(() => {
+    if (stage === 'results' && sessionId && !quizResultId && Object.keys(needAnswers).length > 0) {
+      const saveQuizResults = async () => {
+        try {
+          // Calculate results for saving
+          const accomplishCount = Object.values(needAnswers).filter(a => a.selection === 'left').length;
+
+          // Employment signals: these map to the structural question IDs and their employment-leaning answers
+          const employmentSignalMap = {
+            stability: 'stability',
+            recognition: 'external',
+            risk: 'low',
+            autonomy: 'guided',
+            identity: 'separate'
+          };
+          const employmentSignals = Object.entries(structuralAnswers).filter(([id, answer]) =>
+            employmentSignalMap[id] === answer
+          ).length;
+
+          const path = employmentSignals < 3 ? 'own-thing' : 'job';
+          const unmetNeeds = Object.entries(needAnswers)
+            .filter(([_, a]) => a.met === 'no' || a.met === 'partial')
+            .map(([id]) => id);
+
+          const { data, error } = await supabase
+            .from('quiz_results')
+            .upsert({
+              session_id: sessionId,
+              need_answers: needAnswers,
+              structural_answers: structuralAnswers,
+              path_result: path,
+              unmet_needs: unmetNeeds,
+              accomplish_score: accomplishCount,
+              employment_score: employmentSignals
+            }, { onConflict: 'session_id' })
+            .select()
+            .single();
+
+          if (data) {
+            setQuizResultId(data.id);
+          }
+          if (error) {
+            console.error('Error saving quiz results:', error);
+          }
+        } catch (err) {
+          console.error('Error saving quiz results:', err);
+        }
+      };
+      saveQuizResults();
+    }
+  }, [stage, sessionId, quizResultId, needAnswers, structuralAnswers]);
+
   // The 6 Core Needs with Accomplish <-> Connect spectrum
   const needs = [
     {
@@ -506,35 +559,6 @@ const CareerClarityQuiz = () => {
     }));
   };
 
-  const saveResults = async (results) => {
-    try {
-      const { data, error } = await supabase
-        .from('quiz_results')
-        .upsert({
-          session_id: sessionId,
-          need_answers: needAnswers,
-          structural_answers: structuralAnswers,
-          path_result: results.path,
-          unmet_needs: results.unmetNeeds.map(n => n.id),
-          accomplish_score: results.accomplishCount,
-          employment_score: results.employmentSignals
-        }, { onConflict: 'session_id' })
-        .select()
-        .single();
-
-      if (data) {
-        setQuizResultId(data.id);
-      }
-      if (error) {
-        console.error('Error saving results:', error);
-      }
-      return data;
-    } catch (err) {
-      console.error('Error saving results:', err);
-      return null;
-    }
-  };
-
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     if (email && !isSubmitting) {
@@ -635,9 +659,6 @@ const CareerClarityQuiz = () => {
       quadrant,
       unmetNeeds
     };
-
-    // Save results to Supabase
-    saveResults(results);
 
     return results;
   };
